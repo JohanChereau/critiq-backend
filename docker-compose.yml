@@ -1,0 +1,28 @@
+services:
+  postgres:
+    container_name: postgres-sql-critiq
+    image: postgres
+    env_file:
+      - .env.local
+    volumes:
+      - postgres:/data/postgres
+    ports:
+      - 5432:5432
+    networks:
+      - spring-critiq
+    restart: unless-stopped
+
+  mail-dev:
+    container_name: mail-dev-critiq
+    image: maildev/maildev
+    ports:
+      - 1080:1080
+      - 1025:1025
+
+networks:
+  spring-critiq:
+    driver: bridge
+
+volumes:
+  postgres:
+    driver: local
