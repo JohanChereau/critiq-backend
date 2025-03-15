@@ -30,7 +30,10 @@ public class User implements UserDetails, Principal {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private String firstname;
+
+    @Column(nullable = false)
     private String lastname;
 
     @Column(unique = true, nullable = false)
@@ -52,13 +55,13 @@ public class User implements UserDetails, Principal {
     private boolean termsAccepted;
 
     @Column(name = "terms_accepted_at")
-    private LocalDateTime termsAcceptedDate;
+    private LocalDateTime termsAcceptedAt;
 
     @Column(name = "newsletter_opt_in", nullable = false)
     private boolean newsletterAccepted;
 
     @Column(name = "newsletter_opt_in_at")
-    private LocalDateTime newsletterAcceptedDate;
+    private LocalDateTime newsletterAcceptedAt;
 
     private boolean accountLocked;
     private boolean enabled;
@@ -68,11 +71,11 @@ public class User implements UserDetails, Principal {
 
     @CreatedDate
     @Column(nullable = false, updatable = false)
-    private LocalDateTime createdDate;
+    private LocalDateTime createdAt;
 
     @LastModifiedDate
     @Column(insertable = false)
-    private LocalDateTime updatedDate;
+    private LocalDateTime updatedAt;
 
     @Override
     public String getName() {
@@ -94,7 +97,7 @@ public class User implements UserDetails, Principal {
 
     @Override
     public String getUsername() {
-        return email;
+        return username;
     }
 
     @Override
@@ -117,7 +120,7 @@ public class User implements UserDetails, Principal {
         return enabled;
     }
 
-    private String getFullName() {
+    public String getFullName() {
         return firstname + " " + lastname;
     }
 }
