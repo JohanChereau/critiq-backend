@@ -123,7 +123,6 @@ public class AuthenticationService {
                 .build();
     }
 
-//    @Transactional
     public void activateAccount(String token) throws MessagingException {
         Token savedToken = tokenRepository.findByToken(token)
                 //TODO: better error handling
