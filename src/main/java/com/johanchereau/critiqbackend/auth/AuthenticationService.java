@@ -12,7 +12,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
@@ -114,6 +113,7 @@ public class AuthenticationService {
 
         claims.put("fullname", user.getFullName());
         claims.put("username", user.getUsername());
+        claims.put("email", user.getEmail());
 
         var jwtToken = jwtService.generateToken(claims, user);
 

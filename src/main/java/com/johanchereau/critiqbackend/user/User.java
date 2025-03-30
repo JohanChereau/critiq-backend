@@ -104,7 +104,7 @@ public class User implements UserDetails, Principal {
 
     @Override
     public String getUsername() {
-        return username;
+        return email;
     }
 
     @Override
