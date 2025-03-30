@@ -3,6 +3,7 @@ package com.johanchereau.critiqbackend.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.domain.AuditorAware;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -31,6 +32,10 @@ public class BeansConfig {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
+    @Bean
+    public AuditorAware<Long> auditorProvider() {
+        return new ApplicationAuditAware();
+    }
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
