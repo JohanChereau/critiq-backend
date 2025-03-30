@@ -1,5 +1,6 @@
 package com.johanchereau.critiqbackend.user;
 
+import com.johanchereau.critiqbackend.favorite.Favorite;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -68,6 +69,12 @@ public class User implements UserDetails, Principal {
 
     @ManyToMany(fetch = FetchType.EAGER)
     private List<UserRole> userRoles;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Favorite> favorites;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UserReview> reviews;
 
     @CreatedDate
     @Column(nullable = false, updatable = false)
