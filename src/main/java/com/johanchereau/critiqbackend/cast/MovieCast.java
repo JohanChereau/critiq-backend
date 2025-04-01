@@ -1,5 +1,6 @@
 package com.johanchereau.critiqbackend.cast;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.johanchereau.critiqbackend.common.BaseEntity;
 import com.johanchereau.critiqbackend.movie.Movie;
 import jakarta.persistence.Entity;
@@ -19,14 +20,17 @@ import lombok.experimental.SuperBuilder;
 @Entity
 public class MovieCast extends BaseEntity {
 
+    @JsonBackReference
     @ManyToOne
     @JoinColumn(name = "movie_id", nullable = false)
     private Movie movie;
 
+    @JsonBackReference
     @ManyToOne
     @JoinColumn(name = "movie_role_id", nullable = false)
     private MovieRole movieRole;
 
+    @JsonBackReference
     @ManyToOne
     @JoinColumn(name = "person_id", nullable = false)
     private Person person;

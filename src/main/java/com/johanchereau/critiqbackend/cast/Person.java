@@ -1,5 +1,6 @@
 package com.johanchereau.critiqbackend.cast;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.johanchereau.critiqbackend.common.BaseEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.OneToMany;
@@ -27,5 +28,6 @@ public class Person extends BaseEntity {
     private LocalDate dateOfBirth;
 
     @OneToMany(mappedBy = "person")
+    @JsonManagedReference
     private List<MovieCast> casts;
 }

@@ -1,5 +1,6 @@
 package com.johanchereau.critiqbackend.movie;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.johanchereau.critiqbackend.cast.MovieCast;
 import com.johanchereau.critiqbackend.common.BaseEntity;
 import com.johanchereau.critiqbackend.country.Country;
@@ -65,6 +66,7 @@ public class Movie extends BaseEntity {
     @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MovieLanguage> movieLanguages;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MovieCast> casts;
 

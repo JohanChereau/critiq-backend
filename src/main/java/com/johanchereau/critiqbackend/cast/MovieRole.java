@@ -1,5 +1,6 @@
 package com.johanchereau.critiqbackend.cast;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.johanchereau.critiqbackend.common.BaseEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.OneToMany;
@@ -22,5 +23,6 @@ public class MovieRole extends BaseEntity {
     private String name;
 
     @OneToMany(mappedBy = "movieRole")
+    @JsonManagedReference
     private List<MovieCast> casts;
 }
