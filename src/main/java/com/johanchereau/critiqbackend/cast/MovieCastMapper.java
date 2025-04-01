@@ -37,8 +37,11 @@ public class MovieCastMapper {
         return new MovieCastResponse(
                 movieCast.getId(),
                 movieCast.getCharacterName(),
+                movieCast.getMovie().getId(),
                 movieCast.getMovie().getTitle(),
+                movieCast.getMovieRole().getId(),
                 movieCast.getMovieRole().getName(),
+                movieCast.getPerson().getId(),
                 movieCast.getPerson().getName()
         );
     }
