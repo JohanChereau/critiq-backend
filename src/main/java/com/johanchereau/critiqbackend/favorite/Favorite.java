@@ -16,6 +16,10 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
+@Table(
+        name = "favorite",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "movie_id"})
+)
 public class Favorite extends BaseEntity {
 
     @Id
