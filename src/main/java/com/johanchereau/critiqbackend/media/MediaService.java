@@ -22,39 +22,29 @@ public class MediaService {
     private final MediaTypeRepository mediaTypeRepository;
     private final MovieRepository movieRepository;
 
-    public MediaResponse save(MediaRequest mediaRequest) {
-        MediaType mediaType = mediaTypeRepository.findById(mediaRequest.mediaTypeId())
+    public MediaResponse save(Long movieId, MediaRequest request) {
+        var mediaType = mediaTypeRepository.findById(request.mediaTypeId())
                 .orElseThrow(() -> new EntityNotFoundException("MediaType not found"));
-        Movie movie = movieRepository.findById(mediaRequest.movieId())
+
+        var movie = movieRepository.findById(movieId)
                 .orElseThrow(() -> new EntityNotFoundException("Movie not found"));
 
-        Media media = mediaMapper.toMedia(mediaRequest, mediaType, movie);
-        media = mediaRepository.save(media);
+        var media = mediaMapper.toMedia(request, mediaType, movie);
+        return mediaMapper.toMediaResponse(mediaRepository.save(media));
+    }
+
+    public MediaResponse findByIdForMovie(Long movieId, Long mediaId) {
+        var media = mediaRepository.findById(mediaId)
+                .filter(m -> m.getMovie().getId().equals(movieId))
+                .orElseThrow(() -> new EntityNotFoundException("No media found with id " + mediaId + " for movie " + movieId));
+
         return mediaMapper.toMediaResponse(media);
     }
 
-    public MediaResponse findById(long mediaId) {
-        return mediaRepository.findById(mediaId)
-                .map(mediaMapper::toMediaResponse)
-                .orElseThrow(() -> new EntityNotFoundException("No media found with the id: " + mediaId));
-    }
-
-    public PageResponse<MediaResponse> findAllMedia(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<Media> mediaPage = mediaRepository.findAll(pageable);
-
-        List<MediaResponse> mediaResponseList = mediaPage.stream()
+    public List<MediaResponse> findAllForMovie(Long movieId) {
+        return mediaRepository.findAll().stream()
+                .filter(media -> media.getMovie().getId().equals(movieId))
                 .map(mediaMapper::toMediaResponse)
                 .toList();
-
-        return new PageResponse<>(
-                mediaResponseList,
-                mediaPage.getNumber(),
-                mediaPage.getSize(),
-                mediaPage.getTotalElements(),
-                mediaPage.getTotalPages(),
-                mediaPage.isFirst(),
-                mediaPage.isLast()
-        );
     }
 }

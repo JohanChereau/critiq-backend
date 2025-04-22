@@ -7,8 +7,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
-@RequestMapping("medias")
+@RequestMapping("movies/{movieId}/medias")
 @RequiredArgsConstructor
 @Tag(name = "Media")
 public class MediaController {
@@ -17,21 +19,22 @@ public class MediaController {
 
     @PostMapping
     public ResponseEntity<MediaResponse> addMedia(
+            @PathVariable Long movieId,
             @Valid @RequestBody MediaRequest mediaRequest
     ) {
-        return ResponseEntity.ok(mediaService.save(mediaRequest));
-    }
-
-    @GetMapping("{media-id}")
-    public ResponseEntity<MediaResponse> findMediaById(@PathVariable("media-id") long mediaId) {
-        return ResponseEntity.ok(mediaService.findById(mediaId));
+        return ResponseEntity.ok(mediaService.save(movieId, mediaRequest));
     }
 
     @GetMapping
-    public ResponseEntity<PageResponse<MediaResponse>> findAllMedia(
-            @RequestParam(name = "page", defaultValue = "0", required = false) int page,
-            @RequestParam(name = "size", defaultValue = "10", required = false) int size
+    public ResponseEntity<List<MediaResponse>> findAllMediaForMovie(@PathVariable Long movieId) {
+        return ResponseEntity.ok(mediaService.findAllForMovie(movieId));
+    }
+
+    @GetMapping("{mediaId}")
+    public ResponseEntity<MediaResponse> findByIdForMovie(
+            @PathVariable Long movieId,
+            @PathVariable Long mediaId
     ) {
-        return ResponseEntity.ok(mediaService.findAllMedia(page, size));
+        return ResponseEntity.ok(mediaService.findByIdForMovie(movieId, mediaId));
     }
 }
