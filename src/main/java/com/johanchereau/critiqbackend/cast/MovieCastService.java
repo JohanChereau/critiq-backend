@@ -18,40 +18,36 @@ public class MovieCastService {
     private final MovieRoleRepository movieRoleRepository;
     private final PersonRepository personRepository;
 
-    public MovieCast save(MovieCastRequest movieCastRequest) {
-        Movie movie = movieRepository.findById(movieCastRequest.movieId())
-                .orElseThrow(() -> new EntityNotFoundException("Movie not found with id: " + movieCastRequest.movieId()));
-        MovieRole movieRole = movieRoleRepository.findById(movieCastRequest.movieRoleId())
-                .orElseThrow(() -> new EntityNotFoundException("MovieRole not found with id: " + movieCastRequest.movieRoleId()));
-        Person person = personRepository.findById(movieCastRequest.personId())
-                .orElseThrow(() -> new EntityNotFoundException("Person not found with id: " + movieCastRequest.personId()));
+    public MovieCastResponse save(Long movieId, MovieCastRequest request) {
+        Movie movie = movieRepository.findById(movieId)
+                .orElseThrow(() -> new EntityNotFoundException("Movie not found with id: " + movieId));
 
-        MovieCast movieCast = movieCastMapper.toMovieCast(movieCastRequest);
-        return movieCastRepository.save(movieCast);
+        var movieRole = movieRoleRepository.findById(request.movieRoleId())
+                .orElseThrow(() -> new EntityNotFoundException("MovieRole not found with id: " + request.movieRoleId()));
+
+        var person = personRepository.findById(request.personId())
+                .orElseThrow(() -> new EntityNotFoundException("Person not found with id: " + request.personId()));
+
+        var movieCast = MovieCast.builder()
+                .movie(movie)
+                .movieRole(movieRole)
+                .person(person)
+                .characterName(request.characterName())
+                .build();
+
+        return movieCastMapper.toMovieCastResponse(movieCastRepository.save(movieCast));
     }
 
-    public MovieCastResponse findById(long movieCastId) {
-        return movieCastRepository.findById(movieCastId)
-                .map(movieCastMapper::toMovieCastResponse)
-                .orElseThrow(() -> new EntityNotFoundException("No movie cast found with id: " + movieCastId));
+    public MovieCastResponse findByIdForMovie(Long movieId, Long castId) {
+        var cast = movieCastRepository.findById(castId)
+                .filter(mc -> mc.getMovie().getId().equals(movieId))
+                .orElseThrow(() -> new EntityNotFoundException("No cast with id " + castId + " found for movie " + movieId));
+
+        return movieCastMapper.toMovieCastResponse(cast);
     }
 
-    public List<MovieCastResponse> findAllByMovieId(long movieId) {
+    public List<MovieCastResponse> findAllByMovieId(Long movieId) {
         List<MovieCast> movieCasts = movieCastRepository.findByMovieId(movieId);
-        return movieCasts.stream()
-                .map(movieCastMapper::toMovieCastResponse)
-                .toList();
-    }
-
-    public List<MovieCastResponse> findAllByPersonId(long personId) {
-        List<MovieCast> movieCasts = movieCastRepository.findByPersonId(personId);
-        return movieCasts.stream()
-                .map(movieCastMapper::toMovieCastResponse)
-                .toList();
-    }
-
-    public List<MovieCastResponse> findAll() {
-        List<MovieCast> movieCasts = movieCastRepository.findAll();
         return movieCasts.stream()
                 .map(movieCastMapper::toMovieCastResponse)
                 .toList();
