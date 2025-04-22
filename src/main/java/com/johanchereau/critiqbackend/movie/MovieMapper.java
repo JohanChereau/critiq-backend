@@ -36,11 +36,7 @@ public class MovieMapper {
                 .bannerUrl(movie.getBannerUrl())
                 .genres(movie.getGenres())
                 .countries(movie.getCountries())
-                .media(movie.getMedia())
                 .movieLanguages(movie.getMovieLanguages())
-                .casts(movie.getCasts())
-                .reviews(movie.getReviews())
-                .favorites(movie.getFavorites())
                 .build();
     }
 }
