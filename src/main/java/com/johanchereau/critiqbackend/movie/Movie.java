@@ -75,4 +75,10 @@ public class Movie extends BaseEntity {
 
     @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Favorite> favorites;
+
+    @Transient
+    private Double averageRating;
+
+    @Transient
+    private Integer totalReviews;
 }

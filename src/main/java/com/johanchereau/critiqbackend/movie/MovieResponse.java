@@ -30,4 +30,7 @@ public class MovieResponse {
     private Set<Genre> genres;
     private Set<Country> countries;
     private List<MovieLanguage> movieLanguages;
+
+    private int totalReviews;
+    private double averageRating;
 }

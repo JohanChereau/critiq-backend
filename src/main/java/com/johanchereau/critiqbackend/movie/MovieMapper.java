@@ -1,6 +1,9 @@
 package com.johanchereau.critiqbackend.movie;
 
+import com.johanchereau.critiqbackend.user.UserReview;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class MovieMapper {
@@ -22,6 +25,18 @@ public class MovieMapper {
     }
 
     public MovieResponse toMovieResponse(Movie movie) {
+        Double averageRating = movie.getReviews().isEmpty()
+                ? null
+                : movie.getReviews().stream()
+                .mapToInt(UserReview::getRating)
+                .average()
+                .orElse(0.0);
+
+        int totalReviews = movie.getReviews().size();
+
+        movie.setAverageRating(averageRating);
+        movie.setTotalReviews(totalReviews);
+
         return MovieResponse.builder()
                 .id(movie.getId())
                 .title(movie.getTitle())
@@ -37,6 +52,8 @@ public class MovieMapper {
                 .genres(movie.getGenres())
                 .countries(movie.getCountries())
                 .movieLanguages(movie.getMovieLanguages())
+                .averageRating(averageRating)
+                .totalReviews(totalReviews)
                 .build();
     }
 }
