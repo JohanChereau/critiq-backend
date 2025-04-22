@@ -80,6 +80,28 @@ public class GlobalExceptionHandler {
                 );
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ExceptionResponse> handleIllegalState(IllegalStateException ex) {
+        if (REVIEW_ALREADY_EXISTS.getMessage().equals(ex.getMessage())) {
+            return ResponseEntity
+                    .status(REVIEW_ALREADY_EXISTS.getHttpStatusCode())
+                    .body(ExceptionResponse.builder()
+                            .errorCode(REVIEW_ALREADY_EXISTS.getCode())
+                            .errorMessage(REVIEW_ALREADY_EXISTS.getMessage())
+                            .errorDetails(ex.getMessage())
+                            .build()
+                    );
+        }
+
+        return ResponseEntity
+                .status(BAD_REQUEST)
+                .body(ExceptionResponse.builder()
+                        .errorCode(NO_CODE.getCode())
+                        .errorMessage("Bad request")
+                        .errorDetails(ex.getMessage())
+                        .build());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ExceptionResponse> handleException(Exception exception) {
 

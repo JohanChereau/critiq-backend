@@ -10,6 +10,7 @@ public enum ErrorCodes {
     ACCOUNT_LOCKED(302, HttpStatus.FORBIDDEN, "User account is locked"),
     ACCOUNT_DISABLED(303, HttpStatus.FORBIDDEN, "User account is disabled"),
     BAD_CREDENTIALS(304, HttpStatus.FORBIDDEN, "Login and/or password is incorrect"),
+    REVIEW_ALREADY_EXISTS(400, HttpStatus.BAD_REQUEST, "You have already submitted a review for this movie"),
     ;
 
     @Getter
