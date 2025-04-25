@@ -1,11 +1,9 @@
 package com.johanchereau.critiqbackend.user;
 
+import com.johanchereau.critiqbackend.common.BaseEntity;
 import com.johanchereau.critiqbackend.favorite.Favorite;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -24,12 +22,7 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 @Entity
 @Table(name = "_user")
-@EntityListeners(AuditingEntityListener.class)
-public class User implements UserDetails, Principal {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class User extends BaseEntity implements UserDetails, Principal {
 
     @Column(nullable = false)
     private String firstname;
@@ -75,14 +68,6 @@ public class User implements UserDetails, Principal {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UserReview> reviews;
-
-    @CreatedDate
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @LastModifiedDate
-    @Column(insertable = false)
-    private LocalDateTime updatedAt;
 
     @Override
     public String getName() {
