@@ -1,9 +1,9 @@
 package com.johanchereau.critiqbackend.user;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.johanchereau.critiqbackend.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.util.List;
 
 @Getter
@@ -12,7 +12,14 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-public class UserRole extends BaseEntity {
+public class UserRole {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Version
+    private int version;
 
     @Column(nullable = false, unique = true)
     private String name;
