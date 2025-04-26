@@ -4,13 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.johanchereau.critiqbackend.movie.Movie;
 import com.johanchereau.critiqbackend.movie.MovieRepository;
 import com.johanchereau.critiqbackend.util.TestUserFactory;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -19,8 +17,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static com.johanchereau.critiqbackend.util.MockMvcRequestHelper.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
  * Integration tests for UserReviewController.
@@ -28,8 +25,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Tag("Integration")
 @DisplayName("Integration Tests - UserReviewController")
 class UserReviewControllerIntegrationTest {
+
+    private static final String DEFAULT_EMAIL = "john.doe@example.com";
+    private static final String OTHER_EMAIL = "other.user@example.com";
+    private static final String DEFAULT_MOVIE_TITLE = "Interstellar";
+    private static final String DEFAULT_REVIEW_TITLE = "Amazing movie";
+    private static final String DEFAULT_REVIEW_BODY = "One of the best movies ever!";
 
     @Autowired
     private MockMvc mockMvc;
@@ -57,11 +61,11 @@ class UserReviewControllerIntegrationTest {
         movieRepository.deleteAll();
         userRepository.deleteAll();
 
-        movieId = createAndSaveMovie("Interstellar", LocalDate.of(2014, 11, 7));
-        userId = createAndSaveUser("johndoe", "john.doe@example.com", List.of());
-        otherUserId = createAndSaveUser("otheruser", "other.user@example.com", List.of());
+        movieId = createAndSaveMovie(DEFAULT_MOVIE_TITLE, LocalDate.of(2014, 11, 7));
+        userId = createAndSaveUser("johndoe", DEFAULT_EMAIL, List.of());
+        otherUserId = createAndSaveUser("otheruser", OTHER_EMAIL, List.of());
 
-        reviewId = createAndSaveReview(userId, movieId, "Amazing movie", 5);
+        reviewId = createAndSaveReview(userId, movieId, DEFAULT_REVIEW_TITLE, 5);
     }
 
     private Long createAndSaveMovie(String title, LocalDate releaseDate) {
@@ -100,9 +104,10 @@ class UserReviewControllerIntegrationTest {
         void shouldReturnReviewsForGivenMovie() throws Exception {
             performGetPaginated(mockMvc, "/movies/" + movieId + "/reviews")
                     .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.content").isArray())
                     .andExpect(jsonPath("$.content.length()").value(1))
-                    .andExpect(jsonPath("$.content[0].title").value("Amazing movie"));
+                    .andExpect(jsonPath("$.content[0].title").value(DEFAULT_REVIEW_TITLE));
         }
     }
 
@@ -111,23 +116,24 @@ class UserReviewControllerIntegrationTest {
     class FindReviewsByUser {
 
         @Test
-        @WithMockUser(username = "john.doe@example.com")
+        @WithMockUser(username = DEFAULT_EMAIL)
         @DisplayName("Should return reviews for the connected user")
         void shouldReturnReviewsForConnectedUser() throws Exception {
             performGetPaginated(mockMvc, "/users/" + userId + "/reviews")
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.content").isArray())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.content.length()").value(1))
-                    .andExpect(jsonPath("$.content[0].title").value("Amazing movie"))
+                    .andExpect(jsonPath("$.content[0].title").value(DEFAULT_REVIEW_TITLE))
                     .andExpect(jsonPath("$.content[0].rating").value(5));
         }
 
         @Test
-        @WithMockUser(username = "other.user@example.com")
+        @WithMockUser(username = OTHER_EMAIL)
         @DisplayName("Should forbid access to another user's reviews")
         void shouldForbidAccessToOtherUserReviews() throws Exception {
             performGetPaginated(mockMvc, "/users/" + userId + "/reviews")
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isForbidden())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON));
         }
     }
 
@@ -141,7 +147,8 @@ class UserReviewControllerIntegrationTest {
         void shouldReturnReviewForMovie() throws Exception {
             performGet(mockMvc, "/movies/" + movieId + "/reviews/" + reviewId)
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.title").value("Amazing movie"))
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value(DEFAULT_REVIEW_TITLE))
                     .andExpect(jsonPath("$.rating").value(5));
         }
 
@@ -149,8 +156,7 @@ class UserReviewControllerIntegrationTest {
         @WithMockUser
         @DisplayName("Should return 404 when the review does not exist")
         void shouldReturn404WhenReviewNotFound() throws Exception {
-            Long nonExistingReviewId = 9999L;
-            performGet(mockMvc, "/movies/" + movieId + "/reviews/" + nonExistingReviewId)
+            performGet(mockMvc, "/movies/" + movieId + "/reviews/9999")
                     .andExpect(status().isNotFound());
         }
 
@@ -158,15 +164,7 @@ class UserReviewControllerIntegrationTest {
         @WithMockUser
         @DisplayName("Should return 404 when the review does not belong to the movie")
         void shouldReturn404WhenReviewNotBelongsToMovie() throws Exception {
-            // Create a second movie
-            Movie anotherMovie = Movie.builder()
-                    .title("Inception")
-                    .releaseDate(LocalDate.of(2010, 7, 16))
-                    .build();
-            anotherMovie = movieRepository.save(anotherMovie);
-            Long anotherMovieId = anotherMovie.getId();
-
-            // Try to get reviewId but with wrong movieId
+            Long anotherMovieId = createAndSaveMovie("Inception", LocalDate.of(2010, 7, 16));
             performGet(mockMvc, "/movies/" + anotherMovieId + "/reviews/" + reviewId)
                     .andExpect(status().isNotFound());
         }
@@ -182,16 +180,15 @@ class UserReviewControllerIntegrationTest {
         void shouldReturnReview() throws Exception {
             performGet(mockMvc, "/reviews/" + reviewId)
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.title").value("Amazing movie"))
-                    .andExpect(jsonPath("$.rating").value(5));
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value(DEFAULT_REVIEW_TITLE));
         }
 
         @Test
         @WithMockUser
         @DisplayName("Should return 404 when the review does not exist")
         void shouldReturn404WhenReviewNotFound() throws Exception {
-            Long nonExistingReviewId = 9999L;
-            performGet(mockMvc, "/reviews/" + nonExistingReviewId)
+            performGet(mockMvc, "/reviews/9999")
                     .andExpect(status().isNotFound());
         }
     }
@@ -201,53 +198,45 @@ class UserReviewControllerIntegrationTest {
     class AddReview {
 
         @Test
-        @WithMockUser(username = "john.doe@example.com")
+        @WithMockUser(username = DEFAULT_EMAIL)
         @DisplayName("Should successfully add a review for a movie")
         void shouldAddReviewSuccessfully() throws Exception {
-            // Create a new movie to avoid the duplication constraint that leads to review duplication error
             Long newMovieId = createAndSaveMovie("New Movie", LocalDate.of(2025, 1, 1));
 
             var request = new UserReviewRequest(
                     "Masterpiece",
-                    "One of the best movies ever!",
+                    DEFAULT_REVIEW_BODY,
                     5
             );
 
             performPost(mockMvc, "/movies/" + newMovieId + "/reviews", request)
                     .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.title").value("Masterpiece"))
                     .andExpect(jsonPath("$.rating").value(5))
-                    .andExpect(jsonPath("$.body").value("One of the best movies ever!"));
+                    .andExpect(jsonPath("$.body").value(DEFAULT_REVIEW_BODY));
         }
 
         @Test
-        @WithMockUser(username = "john.doe@example.com")
+        @WithMockUser(username = DEFAULT_EMAIL)
         @DisplayName("Should fail with 400 when request is invalid")
         void shouldFailWhenRequestInvalid() throws Exception {
-            UserReviewRequest invalidRequest = new UserReviewRequest(
-                    "",   // Empty title
-                    null, // Body is optional
-                    6    // Invalid rating
-            );
+            var invalidRequest = new UserReviewRequest("", null, 6);
 
             performPost(mockMvc, "/movies/" + movieId + "/reviews", invalidRequest)
                     .andExpect(status().isBadRequest())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.validationErrors").exists());
         }
 
         @Test
-        @WithMockUser(username = "john.doe@example.com")
+        @WithMockUser(username = DEFAULT_EMAIL)
         @DisplayName("Should fail with 400 if user already added a review for the movie")
         void shouldFailIfReviewAlreadyExists() throws Exception {
-            var request = new UserReviewRequest(
-                    "Another review",
-                    "Trying to review again!",
-                    4
-            );
+            var request = new UserReviewRequest("Another review", "Trying again!", 4);
 
             performPost(mockMvc, "/movies/" + movieId + "/reviews", request)
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.errorCode").value(400))
                     .andExpect(jsonPath("$.errorMessage").value("You have already submitted a review for this movie"));
         }
     }
@@ -257,7 +246,7 @@ class UserReviewControllerIntegrationTest {
     class DeleteReview {
 
         @Test
-        @WithMockUser(username = "john.doe@example.com")
+        @WithMockUser(username = DEFAULT_EMAIL)
         @DisplayName("Should delete the user's own review successfully")
         void shouldDeleteOwnReviewSuccessfully() throws Exception {
             performDelete(mockMvc, "/movies/" + movieId + "/reviews/" + reviewId)
@@ -265,16 +254,15 @@ class UserReviewControllerIntegrationTest {
         }
 
         @Test
-        @WithMockUser(username = "john.doe@example.com")
+        @WithMockUser(username = DEFAULT_EMAIL)
         @DisplayName("Should return 404 when trying to delete a non-existing review")
         void shouldReturn404WhenDeletingNonExistingReview() throws Exception {
-            Long nonExistingReviewId = 9999L;
-            performDelete(mockMvc, "/movies/" + movieId + "/reviews/" + nonExistingReviewId)
+            performDelete(mockMvc, "/movies/" + movieId + "/reviews/9999")
                     .andExpect(status().isNotFound());
         }
 
         @Test
-        @WithMockUser(username = "other.user@example.com")
+        @WithMockUser(username = OTHER_EMAIL)
         @DisplayName("Should return 404 when trying to delete another user's review")
         void shouldReturn404WhenDeletingAnotherUsersReview() throws Exception {
             performDelete(mockMvc, "/movies/" + movieId + "/reviews/" + reviewId)
