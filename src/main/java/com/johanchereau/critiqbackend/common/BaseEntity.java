@@ -42,11 +42,11 @@ public class BaseEntity implements Serializable {
 
     @CreatedBy
     @Column(nullable = false, updatable = false)
-    private Long createdBy;
+    private String createdBy;
 
     @LastModifiedBy
     @Column(insertable = false)
-    private Long updatedBy;
+    private String updatedBy;
 
     @Override
     public boolean equals(Object o) {

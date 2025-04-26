@@ -1,6 +1,8 @@
 package com.johanchereau.critiqbackend.handler;
 
+import com.johanchereau.critiqbackend.exception.AccessDeniedException;
 import jakarta.mail.MessagingException;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -17,6 +19,18 @@ import static org.springframework.http.HttpStatus.*;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ExceptionResponse> handleEntityNotFoundException(EntityNotFoundException exception) {
+        return ResponseEntity
+                .status(ENTITY_NOT_FOUND.getHttpStatusCode())
+                .body(ExceptionResponse.builder()
+                        .errorCode(ENTITY_NOT_FOUND.getCode())
+                        .errorMessage(ENTITY_NOT_FOUND.getMessage())
+                        .errorDetails(exception.getMessage())
+                        .build()
+                );
+    }
 
     @ExceptionHandler(LockedException.class)
     public ResponseEntity<ExceptionResponse> handleException(LockedException exception) {
@@ -100,6 +114,18 @@ public class GlobalExceptionHandler {
                         .errorMessage("Bad request")
                         .errorDetails(ex.getMessage())
                         .build());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ExceptionResponse> handleAccessDeniedException(AccessDeniedException exception) {
+        return ResponseEntity
+                .status(FORBIDDEN)
+                .body(ExceptionResponse.builder()
+                        .errorCode(exception.getErrorCode())
+                        .errorMessage(ErrorCodes.ACCESS_DENIED.getMessage())
+                        .errorDetails(exception.getMessage())
+                        .build()
+                );
     }
 
     @ExceptionHandler(Exception.class)

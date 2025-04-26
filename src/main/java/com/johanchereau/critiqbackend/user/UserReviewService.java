@@ -1,6 +1,8 @@
 package com.johanchereau.critiqbackend.user;
 
 import com.johanchereau.critiqbackend.common.PageResponse;
+import com.johanchereau.critiqbackend.exception.AccessDeniedException;
+import com.johanchereau.critiqbackend.handler.ErrorCodes;
 import com.johanchereau.critiqbackend.movie.Movie;
 import com.johanchereau.critiqbackend.movie.MovieRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -20,9 +22,16 @@ import static com.johanchereau.critiqbackend.handler.ErrorCodes.REVIEW_ALREADY_E
 @RequiredArgsConstructor
 public class UserReviewService {
 
+    private final UserRepository userRepository;
     private final UserReviewRepository userReviewRepository;
     private final MovieRepository movieRepository;
     private final UserReviewMapper userReviewMapper;
+
+    private User getConnectedUser(Authentication connectedUser) {
+        String userEmail = connectedUser.getName();
+        return userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    }
 
     public PageResponse<UserReviewResponse> findReviewsByMovie(Long movieId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
@@ -44,10 +53,13 @@ public class UserReviewService {
     }
 
     public PageResponse<UserReviewResponse> findReviewsByUser(Long userId, int page, int size, Authentication connectedUser) {
-        User user = (User) connectedUser.getPrincipal();
+        User user = getConnectedUser(connectedUser);
 
         if (!user.getId().equals(userId)) {
-            throw new SecurityException("You can only view your own reviews.");
+            throw new AccessDeniedException(
+                    ErrorCodes.ACCESS_DENIED.getMessage(),
+                    ErrorCodes.ACCESS_DENIED.getCode()
+            );
         }
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
@@ -83,7 +95,7 @@ public class UserReviewService {
     }
 
     public UserReviewResponse saveReview(Long movieId, UserReviewRequest request, Authentication connectedUser) {
-        User user = (User) connectedUser.getPrincipal();
+        User user = getConnectedUser(connectedUser);
 
         Movie movie = movieRepository.findById(movieId)
                 .orElseThrow(() -> new EntityNotFoundException("Movie not found with id: " + movieId));
@@ -97,7 +109,7 @@ public class UserReviewService {
     }
 
     public void deleteReview(Long movieId, Long reviewId, Authentication connectedUser) {
-        User user = (User) connectedUser.getPrincipal();
+        User user = getConnectedUser(connectedUser);
 
         UserReview review = userReviewRepository.findById(reviewId)
                 .filter(r -> r.getUser().getId().equals(user.getId()) && r.getMovie().getId().equals(movieId))

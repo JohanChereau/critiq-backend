@@ -2,23 +2,27 @@ package com.johanchereau.critiqbackend.config;
 
 import com.johanchereau.critiqbackend.user.User;
 import org.springframework.data.domain.AuditorAware;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Optional;
 
-public class ApplicationAuditAware implements AuditorAware<Long> {
+public class ApplicationAuditAware implements AuditorAware<String> {
 
     @Override
-    public Optional<Long> getCurrentAuditor() {
+    public Optional<String> getCurrentAuditor() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if(authentication == null || !authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken) {
-            return Optional.empty();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return Optional.of("system@critiq.com");
         }
 
-        User userPrincipal = (User) authentication.getPrincipal();
-        return Optional.ofNullable(userPrincipal.getId());
+        Object principal = authentication.getPrincipal();
+
+        if (principal instanceof User user) {
+            return Optional.of(user.getEmail());
+        }
+
+        return Optional.of("system@critiq.com");
     }
 }
