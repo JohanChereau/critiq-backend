@@ -1,35 +1,36 @@
 package com.johanchereau.critiqbackend.user;
 
-import com.johanchereau.critiqbackend.common.PageResponse;
-import com.johanchereau.critiqbackend.movie.Movie;
 import com.johanchereau.critiqbackend.movie.MovieRepository;
 import jakarta.persistence.EntityNotFoundException;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.springframework.data.domain.Page;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 
-import java.util.List;
 import java.util.Optional;
 
+import static com.johanchereau.critiqbackend.util.TestFixtures.*;
+import static java.util.Collections.emptyList;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
-/**
- * Unit tests for {@link UserReviewService}.
- */
 @Tag("Unit")
 @DisplayName("Unit Tests - UserReviewService")
+@ExtendWith(MockitoExtension.class)
 class UserReviewServiceTest {
 
     private static final String DEFAULT_EMAIL = "test@example.com";
-    private AutoCloseable mocks;
+
     @Mock
     private UserReviewRepository userReviewRepository;
     @Mock
@@ -41,223 +42,192 @@ class UserReviewServiceTest {
     @InjectMocks
     private UserReviewService userReviewService;
 
-    @BeforeEach
-    void setUp() {
-        mocks = MockitoAnnotations.openMocks(this);
-    }
-
-    @AfterEach
-    void tearDown() throws Exception {
-        mocks.close();
-    }
-
-    /**
-     * Helper to mock an Authentication object returning a given email.
-     */
-    private Authentication mockAuthenticationWithEmail(String email) {
+    private Authentication authFor(String email) {
         Authentication auth = mock(Authentication.class);
-        when(auth.getName()).thenReturn(email);
-        when(auth.getPrincipal()).thenReturn(email);
-        when(userRepository.findByEmail(email)).thenReturn(
-                Optional.of(User.builder().id(1L).email(email).build())
-        );
+        given(auth.getName()).willReturn(email);
+        given(userRepository.findByEmail(email)).willReturn(Optional.of(user(1L, email)));
         return auth;
     }
-
-    // === FIND OPERATIONS ===
 
     @Nested
     @DisplayName("Find Reviews")
     class FindReviews {
 
         @Test
-        @DisplayName("Should return reviews for a given movie")
-        void shouldReturnReviewsByMovieId() {
-            Long movieId = 1L;
-            UserReview review1 = UserReview.builder().id(1L).title("Review A").build();
-            UserReview review2 = UserReview.builder().id(2L).title("Review B").build();
-            Page<UserReview> page = new PageImpl<>(List.of(review1, review2));
-            when(userReviewRepository.findByMovieId(eq(movieId), any())).thenReturn(page);
-            when(userReviewMapper.toResponse(any())).thenAnswer(invocation ->
-                    new UserReviewResponse(invocation.<UserReview>getArgument(0).getId(), invocation.<UserReview>getArgument(0).getTitle(), null, null, null, null, null, null)
+        @DisplayName("by movie id")
+        void byMovieId() {
+            long movieId = 1L;
+            var reviews = reviewPage(
+                    review(1L, "Review A"),
+                    review(2L, "Review B")
             );
+            given(userReviewRepository.findByMovieId(movieId, PageRequest.of(0, 10, sortByCreatedAtDesc())))
+                    .willReturn(reviews);
+            given(userReviewMapper.toResponse(review(1L, "Review A")))
+                    .willReturn(new UserReviewResponse(1L, "Review A", null, null, null, null, null, null));
+            given(userReviewMapper.toResponse(review(2L, "Review B")))
+                    .willReturn(new UserReviewResponse(2L, "Review B", null, null, null, null, null, null));
 
-            PageResponse<UserReviewResponse> result = userReviewService.findReviewsByMovie(movieId, 0, 10);
-
+            var result = userReviewService.findReviewsByMovie(movieId, 0, 10);
             assertEquals(2, result.getContent().size());
         }
 
         @Test
-        @DisplayName("Should return empty page when no reviews for movie")
-        void shouldReturnEmptyPageWhenNoReviewsForMovie() {
-            when(userReviewRepository.findByMovieId(eq(99L), any())).thenReturn(Page.empty());
+        @DisplayName("empty when no reviews")
+        void emptyWhenNoReviews() {
+            long movieId = 99L;
+            given(userReviewRepository.findByMovieId(movieId, PageRequest.of(0, 10, sortByCreatedAtDesc())))
+                    .willReturn(new PageImpl<>(emptyList()));
 
-            PageResponse<UserReviewResponse> result = userReviewService.findReviewsByMovie(99L, 0, 10);
-
-            assertTrue(result.getContent().isEmpty());
+            var result = userReviewService.findReviewsByMovie(movieId, 0, 10);
+            assertEquals(0, result.getContent().size());
         }
 
         @Test
-        @DisplayName("Should return reviews for connected user")
-        void shouldReturnUserReviewsWhenUserIsOwner() {
-            Authentication auth = mockAuthenticationWithEmail(DEFAULT_EMAIL);
-            Long userId = 1L;
-
-            List<UserReview> reviews = List.of(
-                    UserReview.builder().id(1L).title("Review 1").build(),
-                    UserReview.builder().id(2L).title("Review 2").build()
+        @DisplayName("by connected user")
+        void byConnectedUser() {
+            var auth = authFor(DEFAULT_EMAIL);
+            long userId = 1L;
+            var reviews = reviewPage(
+                    review(1L, "R1"),
+                    review(2L, "R2")
             );
-            when(userReviewRepository.findByUserId(eq(userId), any())).thenReturn(new PageImpl<>(reviews));
-            when(userReviewMapper.toResponse(any())).thenAnswer(invocation ->
-                    new UserReviewResponse(invocation.<UserReview>getArgument(0).getId(), invocation.<UserReview>getArgument(0).getTitle(), null, null, userId, "mockUsername", null, null)
-            );
+            given(userReviewRepository.findByUserId(userId, PageRequest.of(0, 10, sortByCreatedAtDesc())))
+                    .willReturn(reviews);
+            given(userReviewMapper.toResponse(review(1L, "R1")))
+                    .willReturn(new UserReviewResponse(1L, "R1", null, null, userId, "user", null, null));
+            given(userReviewMapper.toResponse(review(2L, "R2")))
+                    .willReturn(new UserReviewResponse(2L, "R2", null, null, userId, "user", null, null));
 
-            PageResponse<UserReviewResponse> result = userReviewService.findReviewsByUser(userId, 0, 10, auth);
-
+            var result = userReviewService.findReviewsByUser(userId, 0, 10, auth);
             assertEquals(2, result.getContent().size());
         }
 
         @Test
-        @DisplayName("Should return review for correct movie")
-        void shouldReturnReviewForCorrectMovie() {
-            Long movieId = 1L, reviewId = 10L;
-            Movie movie = Movie.builder().id(movieId).build();
-            UserReview review = UserReview.builder().id(reviewId).title("Matching Review").movie(movie).build();
-            when(userReviewRepository.findById(reviewId)).thenReturn(Optional.of(review));
-            when(userReviewMapper.toResponse(review)).thenReturn(
-                    new UserReviewResponse(reviewId, "Matching Review", null, null, null, null, movieId, null)
-            );
+        @DisplayName("for correct movie")
+        void forCorrectMovie() {
+            long movieId = 1L;
+            long reviewId = 10L;
+            var movie = movie(movieId);
+            var review = reviewWithMovie(reviewId, movie);
+            given(userReviewRepository.findById(reviewId)).willReturn(Optional.of(review));
+            given(userReviewMapper.toResponse(review))
+                    .willReturn(new UserReviewResponse(reviewId, "Match", null, null, null, null, movieId, null));
 
-            UserReviewResponse result = userReviewService.findReviewByIdForMovie(movieId, reviewId);
-
-            assertEquals("Matching Review", result.title());
+            var result = userReviewService.findReviewByIdForMovie(movieId, reviewId);
+            assertEquals("Match", result.title());
         }
 
         @Test
-        @DisplayName("Should return review when it exists")
-        void shouldReturnReview_WhenReviewExists() {
-            Long reviewId = 1L;
-            UserReview review = UserReview.builder().id(reviewId).title("Test Review").build();
-            UserReviewResponse response = new UserReviewResponse(reviewId, "Test Review", null, null, null, null, null, null);
-            when(userReviewRepository.findById(reviewId)).thenReturn(Optional.of(review));
-            when(userReviewMapper.toResponse(review)).thenReturn(response);
+        @DisplayName("when exists by id")
+        void whenExistsById() {
+            long reviewId = 1L;
+            var review = review(reviewId, "Test");
+            given(userReviewRepository.findById(reviewId)).willReturn(Optional.of(review));
+            given(userReviewMapper.toResponse(review))
+                    .willReturn(new UserReviewResponse(reviewId, "Test", null, null, null, null, null, null));
 
-            UserReviewResponse result = userReviewService.findReviewById(reviewId);
-
-            assertEquals("Test Review", result.title());
+            var result = userReviewService.findReviewById(reviewId);
+            assertEquals("Test", result.title());
         }
     }
-
-    // === EXCEPTION SCENARIOS ===
 
     @Nested
     @DisplayName("Exception Scenarios")
     class ExceptionScenarios {
 
         @Test
-        @DisplayName("Should throw SecurityException when accessing another user's reviews")
-        void shouldThrowExceptionWhenUserTriesToAccessAnotherUserReviews() {
-            Authentication auth = mockAuthenticationWithEmail(DEFAULT_EMAIL);
-
-            assertThrows(SecurityException.class, () -> userReviewService.findReviewsByUser(999L, 0, 10, auth));
+        @DisplayName("deny access to others' reviews")
+        void denyAccessOthersReviews() {
+            var auth = authFor(DEFAULT_EMAIL);
+            assertThrows(SecurityException.class,
+                    () -> userReviewService.findReviewsByUser(999L, 0, 10, auth)
+            );
         }
 
         @Test
-        @DisplayName("Should throw EntityNotFoundException when review does not match movie")
-        void shouldThrowExceptionWhenReviewDoesNotMatchMovie() {
-            Long movieId = 1L, reviewId = 10L;
-            Movie otherMovie = Movie.builder().id(2L).build();
-            UserReview review = UserReview.builder().id(reviewId).movie(otherMovie).build();
-            when(userReviewRepository.findById(reviewId)).thenReturn(Optional.of(review));
+        @DisplayName("review mismatch movie")
+        void reviewMismatchMovie() {
+            long movieId = 1L, reviewId = 10L;
+            var otherMovie = movie(2L);
+            var review = reviewWithMovie(reviewId, otherMovie);
+            given(userReviewRepository.findById(reviewId)).willReturn(Optional.of(review));
 
-            assertThrows(EntityNotFoundException.class, () -> userReviewService.findReviewByIdForMovie(movieId, reviewId));
+            assertThrows(EntityNotFoundException.class,
+                    () -> userReviewService.findReviewByIdForMovie(movieId, reviewId)
+            );
         }
 
         @Test
-        @DisplayName("Should throw EntityNotFoundException when review does not exist")
-        void shouldThrowException_WhenReviewDoesNotExist() {
-            when(userReviewRepository.findById(99L)).thenReturn(Optional.empty());
-
-            assertThrows(EntityNotFoundException.class, () -> userReviewService.findReviewById(99L));
+        @DisplayName("not found by id")
+        void notFoundById() {
+            given(userReviewRepository.findById(99L)).willReturn(Optional.empty());
+            assertThrows(EntityNotFoundException.class,
+                    () -> userReviewService.findReviewById(99L)
+            );
         }
 
         @Test
-        @DisplayName("Should throw IllegalStateException if user already submitted review")
-        void shouldThrowExceptionIfReviewAlreadyExists() {
-            Authentication auth = mockAuthenticationWithEmail(DEFAULT_EMAIL);
-            Long userId = 1L, movieId = 2L;
+        @DisplayName("duplicate review")
+        void duplicateReview() {
+            var auth = authFor(DEFAULT_EMAIL);
+            long userId = 1L, movieId = 2L;
+            given(movieRepository.findById(movieId)).willReturn(Optional.of(movie(movieId)));
+            given(userReviewRepository.findByUserIdAndMovieId(userId, movieId))
+                    .willReturn(Optional.of(review(0L, "")));
 
-            when(movieRepository.findById(movieId)).thenReturn(Optional.of(new Movie()));
-            when(userReviewRepository.findByUserIdAndMovieId(userId, movieId))
-                    .thenReturn(Optional.of(UserReview.builder().build()));
-
-            assertThrows(IllegalStateException.class, () ->
-                    userReviewService.saveReview(movieId, new UserReviewRequest("Another", "Body", 4), auth));
+            assertThrows(IllegalStateException.class,
+                    () -> userReviewService.saveReview(movieId, new UserReviewRequest("X", "Y", 3), auth)
+            );
         }
 
         @Test
-        @DisplayName("Should throw EntityNotFoundException when deleting review of another user or wrong movie")
-        void shouldThrowExceptionWhenUserIsNotOwnerOrMovieIdMismatch() {
-            Authentication auth = mockAuthenticationWithEmail(DEFAULT_EMAIL);
-            Long reviewId = 10L, wrongMovieId = 999L;
+        @DisplayName("delete mismatch or not owner")
+        void deleteMismatchOrNotOwner() {
+            var auth = authFor(DEFAULT_EMAIL);
+            long reviewId = 10L, wrongMovie = 999L;
+            var review = reviewWithUserAndMovie(reviewId, user(2L, "other@example.com"), movie(1L));
+            given(userReviewRepository.findById(reviewId)).willReturn(Optional.of(review));
 
-            User anotherUser = User.builder().id(2L).build();
-            Movie movie = Movie.builder().id(1L).build();
-            UserReview review = UserReview.builder().id(reviewId).user(anotherUser).movie(movie).build();
-            when(userReviewRepository.findById(reviewId)).thenReturn(Optional.of(review));
-
-            assertThrows(EntityNotFoundException.class, () ->
-                    userReviewService.deleteReview(wrongMovieId, reviewId, auth));
-        }
-    }
-
-    // === SAVE REVIEW ===
-
-    @Nested
-    @DisplayName("Save Review")
-    class SaveReview {
-
-        @Test
-        @DisplayName("Should save review successfully")
-        void shouldSaveReviewSuccessfully() {
-            Authentication auth = mockAuthenticationWithEmail(DEFAULT_EMAIL);
-            Long userId = 1L, movieId = 2L;
-
-            UserReviewRequest request = new UserReviewRequest("Great movie", "Loved it", 5);
-            Movie movie = Movie.builder().id(movieId).build();
-            UserReview review = UserReview.builder().id(1L).title("Great movie").build();
-            UserReviewResponse response = new UserReviewResponse(1L, "Great movie", "Loved it", 5, userId, "mockUsername", movieId, "Mock Movie");
-
-            when(movieRepository.findById(movieId)).thenReturn(Optional.of(movie));
-            when(userReviewRepository.findByUserIdAndMovieId(userId, movieId)).thenReturn(Optional.empty());
-            when(userReviewMapper.toUserReview(any(), any(), any())).thenReturn(review);
-            when(userReviewRepository.save(review)).thenReturn(review);
-            when(userReviewMapper.toResponse(review)).thenReturn(response);
-
-            UserReviewResponse result = userReviewService.saveReview(movieId, request, auth);
-
-            assertNotNull(result);
-            assertEquals("Great movie", result.title());
+            assertThrows(EntityNotFoundException.class,
+                    () -> userReviewService.deleteReview(wrongMovie, reviewId, auth)
+            );
         }
     }
 
-    // === DELETE REVIEW ===
-
     @Nested
-    @DisplayName("Delete Review")
-    class DeleteReview {
+    @DisplayName("Save & Delete")
+    class SaveDelete {
 
         @Test
-        @DisplayName("Should delete review successfully when user is owner")
-        void shouldDeleteReviewSuccessfullyWhenUserIsOwner() {
-            Authentication auth = mockAuthenticationWithEmail(DEFAULT_EMAIL);
-            Long movieId = 2L, reviewId = 10L;
+        @DisplayName("save success")
+        void saveSuccess() {
+            var auth = authFor(DEFAULT_EMAIL);
+            long userId = 1L, movieId = 2L;
+            var mv = movie(movieId);
+            var reviewEntity = review(1L, "Great");
 
-            Movie movie = Movie.builder().id(movieId).build();
-            UserReview review = UserReview.builder().id(reviewId).user(User.builder().id(1L).build()).movie(movie).build();
-            when(userReviewRepository.findById(reviewId)).thenReturn(Optional.of(review));
+            given(movieRepository.findById(movieId)).willReturn(Optional.of(mv));
+            given(userReviewRepository.findByUserIdAndMovieId(userId, movieId)).willReturn(Optional.empty());
+            given(userReviewMapper.toUserReview(any(), any(), any())).willReturn(reviewEntity);
+            given(userReviewRepository.save(reviewEntity)).willReturn(reviewEntity);
+            given(userReviewMapper.toResponse(reviewEntity))
+                    .willReturn(new UserReviewResponse(1L, "Great", null, null, userId, "u", movieId, "M"));
+
+            var result = userReviewService.saveReview(movieId, new UserReviewRequest("Great", "", 5), auth);
+            assertEquals("Great", result.title());
+        }
+
+        @Test
+        @DisplayName("delete success")
+        void deleteSuccess() {
+            var auth = authFor(DEFAULT_EMAIL);
+            long movieId = 2L, reviewId = 10L;
+            var review = reviewWithUserAndMovie(reviewId, user(1L, DEFAULT_EMAIL), movie(movieId));
+            given(userReviewRepository.findById(reviewId)).willReturn(Optional.of(review));
 
             assertDoesNotThrow(() -> userReviewService.deleteReview(movieId, reviewId, auth));
+            verify(userReviewRepository).delete(review);
         }
     }
 }
