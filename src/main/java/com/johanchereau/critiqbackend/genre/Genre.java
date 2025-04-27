@@ -1,5 +1,6 @@
 package com.johanchereau.critiqbackend.genre;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.johanchereau.critiqbackend.common.BaseEntity;
 import com.johanchereau.critiqbackend.movie.Movie;
 import jakarta.persistence.Entity;
@@ -22,6 +23,7 @@ public class Genre extends BaseEntity {
 
     private String name;
 
+    @JsonBackReference
     @ManyToMany(mappedBy = "genres")
     private Set<Movie> movies;
 }

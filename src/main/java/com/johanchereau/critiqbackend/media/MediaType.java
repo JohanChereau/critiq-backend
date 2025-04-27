@@ -1,5 +1,6 @@
 package com.johanchereau.critiqbackend.media;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.johanchereau.critiqbackend.common.BaseEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.OneToMany;
@@ -22,5 +23,6 @@ public class MediaType extends BaseEntity {
     private String type;
 
     @OneToMany(mappedBy = "mediaType")
+    @JsonManagedReference
     private List<Media> media;
 }

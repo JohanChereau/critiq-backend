@@ -1,5 +1,6 @@
 package com.johanchereau.critiqbackend.media;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.johanchereau.critiqbackend.common.BaseEntity;
 import com.johanchereau.critiqbackend.movie.Movie;
 import jakarta.persistence.Entity;
@@ -23,10 +24,12 @@ public class Media extends BaseEntity {
     private String alt;
     private String url;
 
+    @JsonBackReference
     @ManyToOne
     @JoinColumn(name = "type_id", nullable = false)
     private MediaType mediaType;
 
+    @JsonBackReference
     @ManyToOne
     @JoinColumn(name = "movie_id", nullable = false)
     private Movie movie;

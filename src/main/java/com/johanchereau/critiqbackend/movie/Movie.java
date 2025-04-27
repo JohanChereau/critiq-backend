@@ -10,7 +10,10 @@ import com.johanchereau.critiqbackend.language.MovieLanguage;
 import com.johanchereau.critiqbackend.media.Media;
 import com.johanchereau.critiqbackend.user.UserReview;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
@@ -44,6 +47,7 @@ public class Movie extends BaseEntity {
     private String posterUrl;
     private String bannerUrl;
 
+    @JsonIgnore
     @ManyToMany
     @JoinTable(
             name = "movie_genre",
@@ -52,6 +56,7 @@ public class Movie extends BaseEntity {
     )
     private Set<Genre> genres;
 
+    @JsonIgnore
     @ManyToMany
     @JoinTable(
             name = "movie_country",
@@ -60,9 +65,11 @@ public class Movie extends BaseEntity {
     )
     private Set<Country> countries;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Media> media;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MovieLanguage> movieLanguages;
 

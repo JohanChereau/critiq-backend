@@ -1,5 +1,6 @@
 package com.johanchereau.critiqbackend.country;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.johanchereau.critiqbackend.common.BaseEntity;
 import com.johanchereau.critiqbackend.movie.Movie;
 import jakarta.persistence.Entity;
@@ -23,6 +24,7 @@ public class Country extends BaseEntity {
     private String name;
     private String isoCode;
 
+    @JsonBackReference
     @ManyToMany(mappedBy = "countries")
     private Set<Movie> movies;
 }

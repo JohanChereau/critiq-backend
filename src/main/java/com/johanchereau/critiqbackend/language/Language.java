@@ -1,5 +1,6 @@
 package com.johanchereau.critiqbackend.language;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.johanchereau.critiqbackend.common.BaseEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.OneToMany;
@@ -23,5 +24,6 @@ public class Language extends BaseEntity {
     private String isoCode;
 
     @OneToMany(mappedBy = "language")
+    @JsonManagedReference
     private List<MovieLanguage> movieLanguages;
 }
