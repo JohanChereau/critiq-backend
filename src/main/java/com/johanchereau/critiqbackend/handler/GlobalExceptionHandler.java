@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -27,6 +28,19 @@ public class GlobalExceptionHandler {
                 .body(ExceptionResponse.builder()
                         .errorCode(ENTITY_NOT_FOUND.getCode())
                         .errorMessage(ENTITY_NOT_FOUND.getMessage())
+                        .errorDetails(exception.getMessage())
+                        .build()
+                );
+    }
+
+    // Spring Security denied handlers
+    @ExceptionHandler({org.springframework.security.access.AccessDeniedException.class, AuthorizationDeniedException.class})
+    public ResponseEntity<ExceptionResponse> handleSpringAccessDenied(Exception exception) {
+        return ResponseEntity
+                .status(FORBIDDEN)
+                .body(ExceptionResponse.builder()
+                        .errorCode(ACCESS_DENIED.getCode())
+                        .errorMessage(ACCESS_DENIED.getMessage())
                         .errorDetails(exception.getMessage())
                         .build()
                 );
@@ -116,13 +130,14 @@ public class GlobalExceptionHandler {
                         .build());
     }
 
+    // Custom application-level denied
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ExceptionResponse> handleAccessDeniedException(AccessDeniedException exception) {
+    public ResponseEntity<ExceptionResponse> handleCustomAccessDenied(AccessDeniedException exception) {
         return ResponseEntity
                 .status(FORBIDDEN)
                 .body(ExceptionResponse.builder()
                         .errorCode(exception.getErrorCode())
-                        .errorMessage(ErrorCodes.ACCESS_DENIED.getMessage())
+                        .errorMessage(ACCESS_DENIED.getMessage())
                         .errorDetails(exception.getMessage())
                         .build()
                 );
@@ -130,7 +145,6 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ExceptionResponse> handleException(Exception exception) {
-
         exception.printStackTrace();
 
         return ResponseEntity

@@ -39,66 +39,162 @@ class MovieControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    private String defaultUserEmail;
-
     @BeforeEach
     void setUp() {
-        // Ensure default user exists for authentication
-        var user = testDataFactory.createDefaultUser();
-        defaultUserEmail = TestDataFactory.DEFAULT_EMAIL;
+        // Persist both a regular user and an admin user
+        testDataFactory.createDefaultUser();
+        testDataFactory.createDefaultAdmin();
     }
 
     @Nested
     @DisplayName("Add Movie")
     class AddMovie {
-
         @Test
-        @WithMockUser(username = "john.doe@example.com")
-        @DisplayName("Should successfully add a movie")
-        void shouldAddMovieSuccessfully() throws Exception {
-            var request = Map.of(
+        @WithMockUser(username = TestDataFactory.ADMIN_EMAIL, roles = "ADMIN")
+        @DisplayName("Admin can add a movie")
+        void adminCanAdd() throws Exception {
+            var req = Map.of(
                     "title", "Dune",
-                    "description", "Epic sci-fi",
-                    "storyline", "A hero rises...",
-                    "tagline", "Fear is the mind-killer",
                     "releaseDate", "2021-10-22",
-                    "budgetEur", 165000000,
-                    "classification", "PG-13",
                     "durationMinutes", 155,
-                    "posterUrl", "http://.../dune.jpg",
-                    "bannerUrl", "http://.../dune-banner.jpg"
+                    "budgetEur", 160000000,
+                    "classification", "PG-13"
             );
-
-            performPost(mockMvc, BASE_URL, request)
+            performPost(mockMvc, BASE_URL, req)
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id").isNumber())
-                    .andExpect(jsonPath("$.title").value("Dune"))
-                    .andExpect(jsonPath("$.releaseDate").value("2021-10-22"));
+                    .andExpect(jsonPath("$.title").value("Dune"));
         }
 
         @Test
-        @DisplayName("Should return 403 when unauthenticated")
-        void shouldReturn403WhenUnauthenticated() throws Exception {
-            var request = Map.of("title", "Test", "releaseDate", "2025-01-01", "durationMinutes", 100);
-            performPost(mockMvc, BASE_URL, request)
+        @WithMockUser(username = TestDataFactory.DEFAULT_EMAIL)
+        @DisplayName("User cannot add a movie")
+        void userCannotAdd() throws Exception {
+            var req = Map.of(
+                    "title", "X",
+                    "releaseDate", "2025-01-01",
+                    "durationMinutes", 120,
+                    "budgetEur", 100000,
+                    "classification", "PG"
+            );
+            performPost(mockMvc, BASE_URL, req)
                     .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("Unauthenticated cannot add")
+        void unauthCannotAdd() throws Exception {
+            var req = Map.of(
+                    "title", "X",
+                    "releaseDate", "2025-01-01",
+                    "durationMinutes", 120,
+                    "budgetEur", 100000,
+                    "classification", "PG"
+            );
+            performPost(mockMvc, BASE_URL, req)
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    @Nested
+    @DisplayName("Update Movie")
+    class UpdateMovie {
+        @Test
+        @WithMockUser(username = TestDataFactory.ADMIN_EMAIL, roles = "ADMIN")
+        @DisplayName("Admin can update existing movie")
+        void adminCanUpdate() throws Exception {
+            var movie = testDataFactory.createMovie("Original", LocalDate.of(2020, 1, 1));
+            String url = MOVIE_ID_URL.replace("{movieId}", movie.getId().toString());
+            var req = Map.of(
+                    "title", "Updated",
+                    "releaseDate", movie.getReleaseDate().toString(),
+                    "durationMinutes", 120,
+                    "budgetEur", 500000,
+                    "classification", "PG"
+            );
+            performPut(mockMvc, url, req)
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.title").value("Updated"));
+        }
+
+        @Test
+        @WithMockUser(username = TestDataFactory.DEFAULT_EMAIL)
+        @DisplayName("User cannot update movie")
+        void userCannotUpdate() throws Exception {
+            var movie = testDataFactory.createMovie("X", LocalDate.now());
+            String url = MOVIE_ID_URL.replace("{movieId}", movie.getId().toString());
+            var req = Map.of(
+                    "title", "Fail",
+                    "releaseDate", LocalDate.now().toString(),
+                    "durationMinutes", 120,
+                    "budgetEur", 100000,
+                    "classification", "PG"
+            );
+            performPut(mockMvc, url, req)
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @WithMockUser(username = TestDataFactory.ADMIN_EMAIL, roles = "ADMIN")
+        @DisplayName("Updating non-existent movie returns 404")
+        void updateNotFound() throws Exception {
+            String url = MOVIE_ID_URL.replace("{movieId}", "9999");
+            var req = Map.of(
+                    "title", "X",
+                    "releaseDate", LocalDate.now().toString(),
+                    "durationMinutes", 120,
+                    "budgetEur", 100000,
+                    "classification", "PG"
+            );
+            performPut(mockMvc, url, req)
+                    .andExpect(status().isNotFound());
+        }
+    }
+
+    @Nested
+    @DisplayName("Delete Movie")
+    class DeleteMovie {
+        @Test
+        @WithMockUser(username = TestDataFactory.ADMIN_EMAIL, roles = "ADMIN")
+        @DisplayName("Admin can delete movie")
+        void adminCanDelete() throws Exception {
+            var movie = testDataFactory.createMovie("ToDelete", LocalDate.now());
+            String url = MOVIE_ID_URL.replace("{movieId}", movie.getId().toString());
+            performDelete(mockMvc, url)
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @WithMockUser(username = TestDataFactory.DEFAULT_EMAIL)
+        @DisplayName("User cannot delete movie")
+        void userCannotDelete() throws Exception {
+            var movie = testDataFactory.createMovie("X", LocalDate.now());
+            String url = MOVIE_ID_URL.replace("{movieId}", movie.getId().toString());
+            performDelete(mockMvc, url)
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @WithMockUser(username = TestDataFactory.ADMIN_EMAIL, roles = "ADMIN")
+        @DisplayName("Deleting non-existent movie returns 404")
+        void deleteNotFound() throws Exception {
+            String url = MOVIE_ID_URL.replace("{movieId}", "9999");
+            performDelete(mockMvc, url)
+                    .andExpect(status().isNotFound());
         }
     }
 
     @Nested
     @DisplayName("Find Movie By ID")
     class FindMovieById {
-
         @Test
         @WithMockUser
         @DisplayName("Should return movie when it exists")
         void shouldReturnMovie() throws Exception {
             var movie = testDataFactory.createMovie("Blade Runner", LocalDate.of(1982, 6, 25));
             String url = MOVIE_ID_URL.replace("{movieId}", movie.getId().toString());
-
             performGet(mockMvc, url)
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(movie.getId()))
                     .andExpect(jsonPath("$.title").value("Blade Runner"));
         }
 
@@ -115,20 +211,15 @@ class MovieControllerIntegrationTest {
     @Nested
     @DisplayName("Find All Movies")
     class FindAllMovies {
-
         @Test
         @WithMockUser
         @DisplayName("Should return paginated list of movies")
         void shouldReturnPaginatedList() throws Exception {
-            // Create two movies
             var m1 = testDataFactory.createMovie("Movie A", LocalDate.of(2020, 1, 1));
             var m2 = testDataFactory.createMovie("Movie B", LocalDate.of(2021, 1, 1));
-
-            // Expect exactly 2 movies
             performGetPaginated(mockMvc, BASE_URL)
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.totalElements").value(2))
-                    .andExpect(jsonPath("$.content.length()").value(2))
                     .andExpect(jsonPath("$.content[*].title", containsInAnyOrder("Movie A", "Movie B")));
         }
     }

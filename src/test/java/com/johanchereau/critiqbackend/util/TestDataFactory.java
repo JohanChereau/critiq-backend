@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -19,6 +21,7 @@ public class TestDataFactory {
     // === Default Constants ===
     public static final String DEFAULT_USERNAME = "johndoe";
     public static final String DEFAULT_EMAIL = "john.doe@example.com";
+    public static final LocalDate DEFAULT_DATE_OF_BIRTH = LocalDate.of(1990, 1, 1);
 
     public static final String OTHER_USERNAME = "otheruser";
     public static final String OTHER_EMAIL = "other.user@example.com";
@@ -37,6 +40,7 @@ public class TestDataFactory {
     private final UserRepository userRepository;
     private final MovieRepository movieRepository;
     private final UserReviewRepository userReviewRepository;
+    private final UserRoleRepository userRoleRepository;
 
     // === Movie Methods ===
 
@@ -74,18 +78,38 @@ public class TestDataFactory {
     }
 
     /**
-     * Creates and saves an admin user.
+     * Creates and saves an admin user with persisted role.
      */
     public User createDefaultAdmin() {
-        UserRole adminRole = UserRole.builder().name("ROLE_ADMIN").build();
+        UserRole adminRole = userRoleRepository.save(
+                UserRole.builder().name("ROLE_ADMIN").build()
+        );
         return createUser(ADMIN_USERNAME, ADMIN_EMAIL, List.of(adminRole));
     }
 
     /**
      * Creates and saves a user with given username, email, and roles.
+     * Automatically sets all required fields to sensible defaults.
      */
     public User createUser(String username, String email, List<UserRole> roles) {
-        return userRepository.save(TestUserFactory.createUser(username, email, roles));
+        User user = User.builder()
+                .username(username)
+                .email(email)
+                .firstname(username)
+                .lastname("Test")
+                .password("password")
+                .dateOfBirth(DEFAULT_DATE_OF_BIRTH)
+                .termsAccepted(true)
+                .termsAcceptedAt(LocalDateTime.now())
+                .newsletterAccepted(false)
+                .newsletterAcceptedAt(null)
+                .enabled(true)
+                .accountLocked(false)
+                .userRoles(roles)
+                .favorites(new ArrayList<>())
+                .reviews(new ArrayList<>())
+                .build();
+        return userRepository.save(user);
     }
 
     // === Review Methods ===

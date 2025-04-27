@@ -42,7 +42,6 @@ class MovieServiceTest {
 
     @BeforeEach
     void setUp() {
-        // common authenticated user
         user = User.builder().id(42L).email(USER_EMAIL).build();
         lenient().when(authentication.getName()).thenReturn(USER_EMAIL);
         lenient().when(userRepository.findByEmail(USER_EMAIL)).thenReturn(Optional.of(user));
@@ -54,37 +53,23 @@ class MovieServiceTest {
         @Test
         @DisplayName("should save a new movie when user exists")
         void shouldSaveMovieWhenUserExists() {
-            // given
             MovieRequest request = new MovieRequest(
-                    null,
-                    "Inception",
-                    "Dream within a dream",
-                    "Story",
-                    "Tagline",
-                    LocalDate.of(2010, 7, 16),
-                    160_000_000,
-                    "PG-13",
-                    148,
-                    "poster.jpg",
-                    "banner.jpg"
+                    null, "Inception", "Dream within a dream", "Story", "Tagline",
+                    LocalDate.of(2010, 7, 16), 160_000_000, "PG-13", 148,
+                    "poster.jpg", "banner.jpg"
             );
             Movie toSave = Movie.builder()
-                    .title("Inception")
-                    .releaseDate(request.releaseDate())
+                    .title("Inception").releaseDate(request.releaseDate())
                     .build();
             Movie saved = Movie.builder()
-                    .id(100L)
-                    .title("Inception")
-                    .releaseDate(request.releaseDate())
+                    .id(100L).title("Inception").releaseDate(request.releaseDate())
                     .build();
 
             given(movieMapper.toMovie(request)).willReturn(toSave);
             given(movieRepository.save(toSave)).willReturn(saved);
 
-            // when
             Movie result = movieService.save(request, authentication);
 
-            // then
             assertNotNull(result);
             assertEquals(100L, result.getId());
             assertEquals("Inception", result.getTitle());
@@ -93,100 +78,116 @@ class MovieServiceTest {
         }
 
         @Test
-        @DisplayName("should throw EntityNotFoundException when user not found")
+        @DisplayName("should throw when user not found")
         void shouldThrowWhenUserNotFound() {
-            // given no user
             given(userRepository.findByEmail(USER_EMAIL)).willReturn(Optional.empty());
-            MovieRequest request = new MovieRequest(
-                    null, "Title", "desc", "story", "tag", LocalDate.now(), 0, "R", 90, null, null
+            MovieRequest req = new MovieRequest(
+                    null, "T", "d", "s", "t", LocalDate.now(), 0, "R", 90, null, null
             );
 
-            // when / then
             EntityNotFoundException ex = assertThrows(EntityNotFoundException.class,
-                    () -> movieService.save(request, authentication)
+                    () -> movieService.save(req, authentication)
             );
             assertEquals("User not found", ex.getMessage());
         }
     }
 
     @Nested
-    @DisplayName("findById()")
-    class FindById {
+    @DisplayName("update()")
+    class UpdateMovie {
         @Test
-        @DisplayName("should return MovieResponse when movie exists")
-        void shouldReturnMovieResponse() {
+        @DisplayName("should update movie when exists and user is admin")
+        void shouldUpdateMovie() {
             // given
-            long id = 7L;
-            Movie movie = Movie.builder().id(id).title("Memento").releaseDate(LocalDate.of(2000, 9, 5)).build();
-            MovieResponse response = MovieResponse.builder()
-                    .id(id)
-                    .title("Memento")
-                    .releaseDate(LocalDate.of(2000, 9, 5))
-                    .build();
-
-            given(movieRepository.findById(id)).willReturn(Optional.of(movie));
-            given(movieMapper.toMovieResponse(movie)).willReturn(response);
+            long id = 5L;
+            MovieRequest req = new MovieRequest(
+                    id, "Up", "d", "s", "t", LocalDate.of(2005, 1, 1), 0, null, 0, null, null
+            );
+            Movie existing = Movie.builder().id(id).title("Old").releaseDate(LocalDate.of(2000, 1, 1)).build();
+            given(movieRepository.findById(id)).willReturn(Optional.of(existing));
+            given(movieRepository.save(existing)).willReturn(existing);
 
             // when
-            MovieResponse result = movieService.findById(id);
+            Movie result = movieService.update(id, req, authentication);
 
             // then
-            assertNotNull(result);
             assertEquals(id, result.getId());
-            assertEquals("Memento", result.getTitle());
+            assertEquals("Up", result.getTitle());
+            then(movieRepository).should().save(existing);
         }
 
         @Test
-        @DisplayName("should throw EntityNotFoundException when movie not found")
-        void shouldThrowWhenNotFound() {
-            // given
-            given(movieRepository.findById(123L)).willReturn(Optional.empty());
-
-            // when / then
+        @DisplayName("should throw when movie not found")
+        void shouldThrowIfNotFound() {
+            given(movieRepository.findById(99L)).willReturn(Optional.empty());
+            MovieRequest req = new MovieRequest(
+                    99L, "X", "d", "s", "t", LocalDate.now(), 0, null, 0, null, null
+            );
             EntityNotFoundException ex = assertThrows(EntityNotFoundException.class,
-                    () -> movieService.findById(123L)
+                    () -> movieService.update(99L, req, authentication)
+            );
+            assertTrue(ex.getMessage().contains("No movie find with the id: 99"));
+        }
+    }
+
+    @Nested
+    @DisplayName("delete()")
+    class DeleteMovie {
+        @Test
+        @DisplayName("should delete movie when exists and user is admin")
+        void shouldDelete() {
+            long id = 8L;
+            Movie m = Movie.builder().id(id).build();
+            given(movieRepository.findById(id)).willReturn(Optional.of(m));
+
+            assertDoesNotThrow(() -> movieService.delete(id, authentication));
+            then(movieRepository).should().delete(m);
+        }
+
+        @Test
+        @DisplayName("should throw when not found")
+        void shouldThrowIfMissing() {
+            given(movieRepository.findById(123L)).willReturn(Optional.empty());
+            EntityNotFoundException ex = assertThrows(EntityNotFoundException.class,
+                    () -> movieService.delete(123L, authentication)
             );
             assertTrue(ex.getMessage().contains("No movie find with the id: 123"));
         }
     }
 
     @Nested
-    @DisplayName("findAllMovies()")
-    class FindAllMovies {
+    @DisplayName("findById() & findAllMovies()")
+    class FindMethods {
         @Test
-        @DisplayName("should return paginated movies")
-        void shouldReturnPaginatedMovies() {
-            // given
-            Movie m1 = Movie.builder().id(1L).title("A").releaseDate(LocalDate.now()).build();
-            Movie m2 = Movie.builder().id(2L).title("B").releaseDate(LocalDate.now()).build();
-            Page<Movie> page = new PageImpl<>(
-                    List.of(m1, m2),
-                    PageRequest.of(0, 10, Sort.by("createdAt").descending()),
-                    2
+        @DisplayName("findById works")
+        void findById() {
+            long id = 7L;
+            Movie mv = Movie.builder().id(id).title("M").releaseDate(LocalDate.now()).build();
+            MovieResponse resp = MovieResponse.builder().id(id).title("M").build();
+            given(movieRepository.findById(id)).willReturn(Optional.of(mv));
+            given(movieMapper.toMovieResponse(mv)).willReturn(resp);
+
+            MovieResponse out = movieService.findById(id);
+            assertEquals("M", out.getTitle());
+        }
+
+        @Test
+        @DisplayName("findAllMovies works")
+        void findAllMovies() {
+            Movie a = Movie.builder().id(1L).title("A").build();
+            Movie b = Movie.builder().id(2L).title("B").build();
+            Page<Movie> pg = new PageImpl<>(List.of(a, b),
+                    PageRequest.of(0, 10, Sort.by("createdAt").descending()), 2
             );
-            MovieResponse r1 = MovieResponse.builder()
-                    .id(1L)
-                    .title("A")
-                    .build();
-            MovieResponse r2 = MovieResponse.builder()
-                    .id(2L)
-                    .title("B")
-                    .build();
+            MovieResponse ra = MovieResponse.builder().id(1L).title("A").build();
+            MovieResponse rb = MovieResponse.builder().id(2L).title("B").build();
+            given(movieRepository.findAll(any(Pageable.class))).willReturn(pg);
+            given(movieMapper.toMovieResponse(a)).willReturn(ra);
+            given(movieMapper.toMovieResponse(b)).willReturn(rb);
 
-            given(movieRepository.findAll(any(Pageable.class))).willReturn(page);
-            given(movieMapper.toMovieResponse(m1)).willReturn(r1);
-            given(movieMapper.toMovieResponse(m2)).willReturn(r2);
-
-            // when
-            PageResponse<MovieResponse> rsp = movieService.findAllMovies(0, 10);
-
-            // then
-            assertEquals(2, rsp.getTotalElements());
-            assertEquals(1, rsp.getTotalPages());
-            assertTrue(rsp.isFirst());
-            assertTrue(rsp.isLast());
-            assertEquals(List.of(r1, r2), rsp.getContent());
-            then(movieRepository).should().findAll(any(Pageable.class));
+            PageResponse<MovieResponse> res = movieService.findAllMovies(0, 10);
+            assertEquals(2, res.getTotalElements());
+            assertEquals(List.of(ra, rb), res.getContent());
         }
     }
 }

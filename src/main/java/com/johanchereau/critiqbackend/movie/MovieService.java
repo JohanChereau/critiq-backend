@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
@@ -26,13 +27,6 @@ public class MovieService {
         String userEmail = connectedUser.getName();
         return userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
-    }
-
-    public Movie save(MovieRequest movieRequest, Authentication connectedUser) {
-        User user = getConnectedUser(connectedUser);
-
-        Movie movie = movieMapper.toMovie(movieRequest);
-        return movieRepository.save(movie);
     }
 
     public MovieResponse findById(long movieId) {
@@ -58,5 +52,41 @@ public class MovieService {
                 movies.isFirst(),
                 movies.isLast()
         );
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    public Movie save(MovieRequest movieRequest, Authentication connectedUser) {
+        getConnectedUser(connectedUser);
+
+        Movie movie = movieMapper.toMovie(movieRequest);
+        return movieRepository.save(movie);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    public Movie update(long movieId, MovieRequest request, Authentication auth) {
+        getConnectedUser(auth);
+        Movie existing = movieRepository.findById(movieId)
+                .orElseThrow(() -> new EntityNotFoundException("No movie find with the id: " + movieId));
+
+        existing.setTitle(request.title());
+        existing.setDescription(request.description());
+        existing.setStoryline(request.storyline());
+        existing.setTagline(request.tagline());
+        existing.setReleaseDate(request.releaseDate());
+        existing.setBudgetEur(request.budgetEur());
+        existing.setClassification(request.classification());
+        existing.setDurationMinutes(request.durationMinutes());
+        existing.setPosterUrl(request.posterUrl());
+        existing.setBannerUrl(request.bannerUrl());
+
+        return movieRepository.save(existing);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    public void delete(long movieId, Authentication auth) {
+        getConnectedUser(auth);
+        Movie existing = movieRepository.findById(movieId)
+                .orElseThrow(() -> new EntityNotFoundException("No movie find with the id: " + movieId));
+        movieRepository.delete(existing);
     }
 }
