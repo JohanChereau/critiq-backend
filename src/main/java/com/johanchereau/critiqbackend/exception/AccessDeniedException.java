@@ -3,7 +3,7 @@ package com.johanchereau.critiqbackend.exception;
 import lombok.Getter;
 
 @Getter
-public class AccessDeniedException extends RuntimeException {
+public class AccessDeniedException extends SecurityException {
     private final int errorCode;
 
     public AccessDeniedException(String message, int errorCode) {
