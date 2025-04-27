@@ -12,6 +12,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -82,11 +83,23 @@ public class MovieService {
         return movieRepository.save(existing);
     }
 
+    @Transactional
     @PreAuthorize("hasRole('ADMIN')")
-    public void delete(long movieId, Authentication auth) {
+    public MovieResponse delete(long movieId, Authentication auth) {
         getConnectedUser(auth);
-        Movie existing = movieRepository.findById(movieId)
-                .orElseThrow(() -> new EntityNotFoundException("No movie find with the id: " + movieId));
-        movieRepository.delete(existing);
+
+        Movie toDelete = movieRepository.findById(movieId)
+                .orElseThrow(() -> new EntityNotFoundException("No movie found with id: " + movieId));
+
+        toDelete.getGenres().size();
+        toDelete.getCountries().size();
+        toDelete.getMovieLanguages().size();
+        // (idem pour reviews, si besoin)
+
+        MovieResponse dto = movieMapper.toMovieResponse(toDelete);
+
+        movieRepository.delete(toDelete);
+
+        return dto;
     }
 }
