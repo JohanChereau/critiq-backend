@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+
 @Service
 public class MovieMapper {
 
@@ -25,14 +26,17 @@ public class MovieMapper {
     }
 
     public MovieResponse toMovieResponse(Movie movie) {
-        Double averageRating = movie.getReviews().isEmpty()
-                ? null
-                : movie.getReviews().stream()
+        // Safely handle null reviews list
+        List<UserReview> reviews = movie.getReviews() != null ? movie.getReviews() : List.of();
+        // Compute average rating, defaulting to 0.0 if no reviews
+        double averageRating = reviews.isEmpty()
+                ? 0.0
+                : reviews.stream()
                 .mapToInt(UserReview::getRating)
                 .average()
                 .orElse(0.0);
 
-        int totalReviews = movie.getReviews().size();
+        int totalReviews = reviews.size();
 
         movie.setAverageRating(averageRating);
         movie.setTotalReviews(totalReviews);

@@ -2,6 +2,7 @@ package com.johanchereau.critiqbackend.movie;
 
 import com.johanchereau.critiqbackend.common.PageResponse;
 import com.johanchereau.critiqbackend.user.User;
+import com.johanchereau.critiqbackend.user.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -17,11 +18,18 @@ import java.util.List;
 @RequiredArgsConstructor
 public class MovieService {
 
+    private final UserRepository userRepository;
     private final MovieRepository movieRepository;
     private final MovieMapper movieMapper;
 
+    private User getConnectedUser(Authentication connectedUser) {
+        String userEmail = connectedUser.getName();
+        return userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    }
+
     public Movie save(MovieRequest movieRequest, Authentication connectedUser) {
-        User user = ((User) connectedUser.getPrincipal());
+        User user = getConnectedUser(connectedUser);
 
         Movie movie = movieMapper.toMovie(movieRequest);
         return movieRepository.save(movie);
